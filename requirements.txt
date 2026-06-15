@@ -1,4 +1,5 @@
 groq==0.15.0
 python-dotenv==1.0.1
-gradio>=6.9.0
+gradio>=4.44.1
+huggingface_hub<0.26   # gradio 4.44.1 needs HfFolder, removed in newer hub
 pytest>=8.0.0

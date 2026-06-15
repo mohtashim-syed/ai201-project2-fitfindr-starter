@@ -12,10 +12,24 @@ Then open the localhost URL shown in your terminal (usually http://localhost:786
 but check your terminal — the port may differ).
 """
 
+from __future__ import annotations
+
 import gradio as gr
 
 from agent import run_agent
 from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
+
+
+def _format_listing(item: dict) -> str:
+    """Render a selected listing dict into a readable panel string."""
+    brand = item.get("brand") or "—"
+    return (
+        f"{item['title']}\n"
+        f"${item['price']:.0f} · {item['condition']} · {item['platform']}\n"
+        f"Size: {item['size']}  |  Brand: {brand}\n"
+        f"Style: {', '.join(item.get('style_tags', []))}\n\n"
+        f"{item.get('description', '')}"
+    )
 
 
 # ── query handler ─────────────────────────────────────────────────────────────
@@ -43,8 +57,27 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            string and return it along with session["outfit_suggestion"] and
            session["fit_card"].
     """
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+    # 1. Guard against an empty query.
+    if not user_query or not user_query.strip():
+        return "Please type what you're looking for (e.g. 'vintage graphic tee under $30').", "", ""
+
+    # 2. Select the wardrobe based on the radio choice.
+    wardrobe = (
+        get_empty_wardrobe()
+        if wardrobe_choice == "Empty wardrobe (new user)"
+        else get_example_wardrobe()
+    )
+
+    # 3. Run the planning loop.
+    session = run_agent(query=user_query, wardrobe=wardrobe)
+
+    # 4. Early-exit / error path: show the message, leave the other panels blank.
+    if session["error"]:
+        return f"⚠️ {session['error']}", "", ""
+
+    # 5. Happy path: format the selected listing and return all three panels.
+    listing_text = _format_listing(session["selected_item"])
+    return listing_text, session["outfit_suggestion"], session["fit_card"]
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
